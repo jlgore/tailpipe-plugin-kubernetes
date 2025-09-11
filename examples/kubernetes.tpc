@@ -1,0 +1,100 @@
+# Tailpipe Kubernetes Plugin Configuration Examples
+
+# Basic configuration using default kubeconfig
+connection "kubernetes_basic" {
+  plugin = "kubernetes"
+  
+  # Use default kubeconfig (~/.kube/config)
+  # kubeconfig_path will default to ~/.kube/config
+  
+  # Collect from all namespaces (default)
+  namespace = "*"
+  
+  # Include cluster events (default: true)
+  include_events = true
+}
+
+# Production configuration with specific context
+connection "kubernetes_production" {
+  plugin = "kubernetes"
+  
+  # Use specific kubeconfig and context
+  kubeconfig_path    = "~/.kube/config"
+  kubeconfig_context = "production-cluster"
+  
+  # Collect from specific namespaces only
+  namespace = "default,kube-system,monitoring,ingress-nginx"
+  
+  # Enable real-time log streaming
+  follow_logs = true
+  
+  # Collect logs from the last 2 hours
+  since_time = "2h"
+  
+  # Limit concurrent log requests for performance
+  max_log_requests = 15
+  
+  # Include cluster events and node logs
+  include_events    = true
+  include_node_logs = false  # Requires NodeLogQuery feature gate
+  
+  # Optional: specify cluster name for identification
+  cluster_name = "production"
+}
+
+# In-cluster configuration (when running inside Kubernetes)
+connection "kubernetes_in_cluster" {
+  plugin = "kubernetes"
+  
+  # Use service account authentication
+  service_account = true
+  
+  # Collect from current namespace only
+  namespace = "monitoring"
+  
+  # Stream logs in real-time
+  follow_logs = true
+  
+  # Start from current time
+  since_time = "0s"
+  
+  # Include events but not node logs
+  include_events    = true
+  include_node_logs = false
+}
+
+# Development configuration with custom server
+connection "kubernetes_dev" {
+  plugin = "kubernetes"
+  
+  # Connect to custom Kubernetes API server
+  server_url      = "https://dev-k8s.example.com:6443"
+  kubeconfig_path = "~/.kube/dev-config"
+  
+  # Development namespace only
+  namespace = "development"
+  
+  # Historical logs for debugging
+  follow_logs = false
+  since_time  = "24h"
+  
+  # Reduced concurrent requests
+  max_log_requests = 5
+  
+  # Include events for debugging
+  include_events = true
+}
+
+# Minimal configuration
+connection "kubernetes_minimal" {
+  plugin = "kubernetes"
+  
+  # All other settings will use defaults:
+  # - kubeconfig_path: ~/.kube/config
+  # - namespace: "*" (all namespaces)
+  # - follow_logs: false
+  # - since_time: "1h"
+  # - max_log_requests: 10
+  # - include_events: true
+  # - include_node_logs: false
+}
