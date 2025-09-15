@@ -1,6 +1,5 @@
-timeout: 5m
-
 run:
+  timeout: 5m
   concurrency: 4
   modules-download-mode: readonly
   allow-parallel-runners: true
@@ -45,9 +44,3 @@ linters-settings:
     disabled-checks:
       - unnamedResult
       - hugeParam
-
-  staticcheck:
-    go: "1.24"
-
-  unused:
-    go: "1.24"
