@@ -11,11 +11,15 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# Dependency directories (remove the comment below to include it)
-vendor/
-
 # Go workspace file
 go.work
+go.work.sum
+
+# Dependency directories
+vendor/
+
+# Go module download cache
+**/go/pkg/
 
 # IDE files
 .vscode/
@@ -23,6 +27,8 @@ go.work
 *.swp
 *.swo
 *~
+.project
+.settings/
 
 # OS generated files
 .DS_Store
@@ -33,23 +39,47 @@ go.work
 ehthumbs.db
 Thumbs.db
 
+# Project specific binaries
+tailpipe-plugin-kubernetes
+tailpipe-plugin-*
+
+# Build artifacts and distribution
+dist/
+build/
+bin/
+out/
+target/
+
+# GoReleaser artifacts
+artifacts.json
+
+# Testing and coverage
+coverage.txt
+coverage.html
+coverage.out
+*.test.log
+
 # Tailpipe specific
 *.tpi
 .tailpipe/
 config/
 logs/
 
-# Build artifacts
-dist/
-build/
-bin/
-tailpipe-plugin-*
-
-# Testing
-coverage.txt
-coverage.html
-
 # Local environment files
 .env
 .env.local
 .env.*.local
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Debug files
+debug
+debug.test
+__debug_bin*
+
+# Air live reload
+tmp/

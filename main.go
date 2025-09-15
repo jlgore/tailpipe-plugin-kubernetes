@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/turbot/tailpipe-plugin-kubernetes/plugin"
+	"github.com/jlgore/tailpipe-plugin-kubernetes/plugin"
 	tailpipeplugin "github.com/turbot/tailpipe-plugin-sdk/plugin"
 )
 

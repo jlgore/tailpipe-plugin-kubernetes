@@ -1,8 +1,9 @@
-module github.com/turbot/tailpipe-plugin-kubernetes
+module github.com/jlgore/tailpipe-plugin-kubernetes
 
 go 1.24.3
 
 require (
+	github.com/hashicorp/hcl/v2 v2.20.1
 	github.com/turbot/tailpipe-plugin-sdk v0.9.2
 	k8s.io/api v0.34.1
 	k8s.io/apimachinery v0.34.1
@@ -99,7 +100,6 @@ require (
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/go-version v1.7.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/hashicorp/hcl/v2 v2.20.1 // indirect
 	github.com/hashicorp/terraform-registry-address v0.2.1 // indirect
 	github.com/hashicorp/terraform-svchost v0.1.1 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect

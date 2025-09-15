@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/turbot/tailpipe-plugin-kubernetes/config"
-	"github.com/turbot/tailpipe-plugin-kubernetes/internal"
+	"github.com/jlgore/tailpipe-plugin-kubernetes/config"
+	"github.com/jlgore/tailpipe-plugin-kubernetes/internal"
 	"github.com/turbot/tailpipe-plugin-sdk/schema"
 	"github.com/turbot/tailpipe-plugin-sdk/table"
-	
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -30,46 +30,46 @@ type PodLogRow struct {
 	ContainerName string     `json:"container_name"`
 	LogMessage    string     `json:"log_message"`
 	LogLevel      string     `json:"log_level"`
-	
+
 	// Pod metadata
-	NodeName      string                 `json:"node_name"`
-	Labels        map[string]interface{} `json:"labels"`
-	Annotations   map[string]interface{} `json:"annotations"`
-	RestartCount  int                    `json:"restart_count"`
-	
+	NodeName     string                 `json:"node_name"`
+	Labels       map[string]interface{} `json:"labels"`
+	Annotations  map[string]interface{} `json:"annotations"`
+	RestartCount int                    `json:"restart_count"`
+
 	// Cluster metadata
-	ClusterName   string `json:"cluster_name"`
-	
+	ClusterName string `json:"cluster_name"`
+
 	// Tailpipe metadata (enriched automatically)
-	SourceName    string     `json:"tp_source_name,omitempty"`
-	SourceType    string     `json:"tp_source_type,omitempty"`
-	CollectedAt   *time.Time `json:"tp_collected_at,omitempty"`
+	SourceName  string     `json:"tp_source_name,omitempty"`
+	SourceType  string     `json:"tp_source_type,omitempty"`
+	CollectedAt *time.Time `json:"tp_collected_at,omitempty"`
 }
 
 // LogQueryFilters represents filters for pod log queries
 type LogQueryFilters struct {
 	// Time range filters
-	SinceTime  *time.Time
-	UntilTime  *time.Time
-	
+	SinceTime *time.Time
+	UntilTime *time.Time
+
 	// Resource filters
-	Namespaces    []string
+	Namespaces     []string
 	PodNamePattern *regexp.Regexp
-	LabelSelector labels.Selector
-	
+	LabelSelector  labels.Selector
+
 	// Log content filters
-	LogLevels     []string
-	
+	LogLevels []string
+
 	// Pagination
-	Limit         *int64
-	TailLines     *int64
+	Limit     *int64
+	TailLines *int64
 }
 
 // KubernetesPodLogsTable implements the Table interface for pod logs
 type KubernetesPodLogsTable struct {
 	client internal.KubernetesClientInterface
 	config *config.Config
-	
+
 	// Cache for streaming connections
 	streamingConnections map[string]context.CancelFunc
 }
@@ -108,16 +108,16 @@ func (t *KubernetesPodLogsTable) EnrichRow(row *PodLogRow, enrichment schema.Sou
 	if row == nil {
 		return nil, fmt.Errorf("row cannot be nil")
 	}
-	
+
 	// Set Tailpipe metadata from CommonFields
 	if enrichment.CommonFields.TpSourceName != nil {
 		row.SourceName = *enrichment.CommonFields.TpSourceName
 	}
 	row.SourceType = enrichment.CommonFields.TpSourceType
-	
+
 	now := time.Now()
 	row.CollectedAt = &now
-	
+
 	return row, nil
 }
 
@@ -128,21 +128,21 @@ func (t *KubernetesPodLogsTable) CollectRows(ctx context.Context) (<-chan *PodLo
 			return nil, fmt.Errorf("failed to initialize Kubernetes client: %w", err)
 		}
 	}
-	
+
 	// Create a channel for streaming rows
 	rowChan := make(chan *PodLogRow, 100)
-	
+
 	// Start collection in a goroutine
 	go func() {
 		defer close(rowChan)
-		
+
 		// Collect pod logs and stream to channel
 		logs, err := t.collectPodLogs(ctx)
 		if err != nil {
 			slog.Error("Failed to collect pod logs", "error", err)
 			return
 		}
-		
+
 		for _, log := range logs {
 			select {
 			case rowChan <- log:
@@ -151,7 +151,7 @@ func (t *KubernetesPodLogsTable) CollectRows(ctx context.Context) (<-chan *PodLo
 			}
 		}
 	}()
-	
+
 	return rowChan, nil
 }
 
@@ -164,37 +164,37 @@ func (t *KubernetesPodLogsTable) QueryPodLogsWithOptions(ctx context.Context, op
 // LogQueryOptions represents user-friendly query options for pod logs
 type LogQueryOptions struct {
 	// Time range options
-	SinceTime  *time.Time
-	UntilTime  *time.Time
+	SinceTime     *time.Time
+	UntilTime     *time.Time
 	SinceDuration string // e.g., "1h", "30m"
-	
+
 	// Resource filtering
-	Namespaces    []string
-	PodNamePattern string // regex pattern
+	Namespaces     []string
+	PodNamePattern string   // regex pattern
 	LabelSelectors []string // Kubernetes label selectors
-	
+
 	// Log content filtering
-	LogLevels     []string
-	
+	LogLevels []string
+
 	// Pagination and limits
-	Limit         *int64
-	TailLines     *int64
-	
+	Limit     *int64
+	TailLines *int64
+
 	// Streaming options
-	Follow        bool
+	Follow bool
 }
 
 // convertOptionsToFilters converts LogQueryOptions to LogQueryFilters
 func (t *KubernetesPodLogsTable) convertOptionsToFilters(options LogQueryOptions) LogQueryFilters {
 	filters := LogQueryFilters{
-		SinceTime: options.SinceTime,
-		UntilTime: options.UntilTime,
+		SinceTime:  options.SinceTime,
+		UntilTime:  options.UntilTime,
 		Namespaces: options.Namespaces,
-		LogLevels: options.LogLevels,
-		Limit: options.Limit,
-		TailLines: options.TailLines,
+		LogLevels:  options.LogLevels,
+		Limit:      options.Limit,
+		TailLines:  options.TailLines,
 	}
-	
+
 	// Parse since duration if provided
 	if options.SinceDuration != "" && options.SinceTime == nil {
 		if duration, err := time.ParseDuration(options.SinceDuration); err == nil {
@@ -202,14 +202,14 @@ func (t *KubernetesPodLogsTable) convertOptionsToFilters(options LogQueryOptions
 			filters.SinceTime = &since
 		}
 	}
-	
+
 	// Parse pod name pattern
 	if options.PodNamePattern != "" {
 		if regex, err := regexp.Compile(options.PodNamePattern); err == nil {
 			filters.PodNamePattern = regex
 		}
 	}
-	
+
 	// Parse label selectors
 	if len(options.LabelSelectors) > 0 {
 		// Combine multiple label selectors with AND
@@ -218,7 +218,7 @@ func (t *KubernetesPodLogsTable) convertOptionsToFilters(options LogQueryOptions
 			filters.LabelSelector = selector
 		}
 	}
-	
+
 	return filters
 }
 
@@ -234,18 +234,18 @@ func (t *KubernetesPodLogsTable) collectPodLogsWithFilters(ctx context.Context, 
 			return nil, fmt.Errorf("failed to initialize Kubernetes client: %w", err)
 		}
 	}
-	
+
 	var allLogs []*PodLogRow
-	
+
 	// Build list options from filters
 	listOpts := t.buildListOptions(filters)
-	
+
 	// Get pods that have logs available
 	pods, err := t.client.GetPodsWithLogs(ctx, listOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pods with logs: %w", err)
 	}
-	
+
 	// Filter pods by name pattern if specified
 	if filters.PodNamePattern != nil {
 		var filteredPods []corev1.Pod
@@ -256,37 +256,37 @@ func (t *KubernetesPodLogsTable) collectPodLogsWithFilters(ctx context.Context, 
 		}
 		pods = filteredPods
 	}
-	
+
 	slog.Info("Found pods with logs", "count", len(pods), "filters", logFiltersString(filters))
-	
+
 	// Collect logs from each pod
 	for _, pod := range pods {
 		podLogs, err := t.collectLogsFromPodWithFilters(ctx, &pod, filters)
 		if err != nil {
-			slog.Warn("Failed to collect logs from pod", 
-				"namespace", pod.Namespace, 
-				"pod", pod.Name, 
+			slog.Warn("Failed to collect logs from pod",
+				"namespace", pod.Namespace,
+				"pod", pod.Name,
 				"error", err)
 			continue
 		}
 		allLogs = append(allLogs, podLogs...)
 	}
-	
+
 	// Apply post-collection filters
 	allLogs = t.applyPostCollectionFilters(allLogs, filters)
-	
+
 	return allLogs, nil
 }
 
 // CollectWithFilters is an exported wrapper to collect pod logs with filters.
 func (t *KubernetesPodLogsTable) CollectWithFilters(ctx context.Context, filters LogQueryFilters) ([]*PodLogRow, error) {
-    return t.collectPodLogsWithFilters(ctx, filters)
+	return t.collectPodLogsWithFilters(ctx, filters)
 }
 
 // buildListOptions builds Kubernetes list options from query filters
 func (t *KubernetesPodLogsTable) buildListOptions(filters LogQueryFilters) internal.ListOptions {
 	opts := internal.ListOptions{}
-	
+
 	// Set namespace filter
 	if len(filters.Namespaces) > 0 {
 		if len(filters.Namespaces) == 1 && filters.Namespaces[0] != "*" {
@@ -294,12 +294,12 @@ func (t *KubernetesPodLogsTable) buildListOptions(filters LogQueryFilters) inter
 		}
 		// For multiple namespaces, we'll need to query each separately
 	}
-	
+
 	// Set label selector
 	if filters.LabelSelector != nil {
 		opts.LabelSelector = filters.LabelSelector.String()
 	}
-	
+
 	return opts
 }
 
@@ -311,7 +311,7 @@ func (t *KubernetesPodLogsTable) collectLogsFromPod(ctx context.Context, pod *co
 // collectLogsFromPodWithFilters collects logs from a specific pod with filtering
 func (t *KubernetesPodLogsTable) collectLogsFromPodWithFilters(ctx context.Context, pod *corev1.Pod, filters LogQueryFilters) ([]*PodLogRow, error) {
 	var logs []*PodLogRow
-	
+
 	// Collect logs from each container in the pod
 	for _, container := range pod.Spec.Containers {
 		containerLogs, err := t.collectLogsFromContainerWithFilters(ctx, pod, container.Name, filters)
@@ -334,7 +334,7 @@ func (t *KubernetesPodLogsTable) collectLogsFromPodWithFilters(ctx context.Conte
 		}
 		logs = append(logs, containerLogs...)
 	}
-	
+
 	// Also collect from init containers
 	for _, container := range pod.Spec.InitContainers {
 		containerLogs, err := t.collectLogsFromContainerWithFilters(ctx, pod, container.Name, filters)
@@ -356,7 +356,7 @@ func (t *KubernetesPodLogsTable) collectLogsFromPodWithFilters(ctx context.Conte
 		}
 		logs = append(logs, containerLogs...)
 	}
-	
+
 	return logs, nil
 }
 
@@ -372,7 +372,7 @@ func (t *KubernetesPodLogsTable) collectLogsFromContainerWithFilters(ctx context
 		Follow:     t.config.GetFollowLogs(),
 		Timestamps: true,
 	}
-	
+
 	// Apply time range filters
 	if filters.SinceTime != nil {
 		logOpts.SinceTime = &metav1.Time{Time: *filters.SinceTime}
@@ -382,7 +382,7 @@ func (t *KubernetesPodLogsTable) collectLogsFromContainerWithFilters(ctx context
 			logOpts.SinceTime = &since
 		}
 	}
-	
+
 	// Apply pagination filters
 	if filters.TailLines != nil {
 		logOpts.TailLines = filters.TailLines
@@ -390,20 +390,20 @@ func (t *KubernetesPodLogsTable) collectLogsFromContainerWithFilters(ctx context
 	if filters.Limit != nil {
 		logOpts.LimitBytes = filters.Limit
 	}
-	
+
 	// Get log stream with enhanced error handling
 	logStream, err := t.client.GetPodLogs(ctx, pod.Namespace, pod.Name, containerName, logOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get log stream for %s/%s[%s]: %w", pod.Namespace, pod.Name, containerName, err)
 	}
 	defer logStream.Close()
-	
+
 	// Read and parse logs with advanced parsing
 	logs, err := t.parseLogStreamWithFilters(logStream, pod, containerName, filters)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse log stream: %w", err)
 	}
-	
+
 	return logs, nil
 }
 
@@ -415,11 +415,11 @@ func (t *KubernetesPodLogsTable) parseLogStream(stream io.ReadCloser, pod *corev
 // parseLogStreamWithFilters parses the log stream with advanced parsing and filtering
 func (t *KubernetesPodLogsTable) parseLogStreamWithFilters(stream io.ReadCloser, pod *corev1.Pod, containerName string, filters LogQueryFilters) ([]*PodLogRow, error) {
 	var logs []*PodLogRow
-	
+
 	// Use buffered scanner for better performance with streaming logs
 	scanner := bufio.NewScanner(stream)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024) // 1MB max line size
-	
+
 	// Get container restart count
 	restartCount := 0
 	for _, containerStatus := range pod.Status.ContainerStatuses {
@@ -428,18 +428,18 @@ func (t *KubernetesPodLogsTable) parseLogStreamWithFilters(stream io.ReadCloser,
 			break
 		}
 	}
-	
+
 	// Convert labels and annotations to map[string]interface{}
 	labels := make(map[string]interface{})
 	for k, v := range pod.Labels {
 		labels[k] = v
 	}
-	
+
 	annotations := make(map[string]interface{})
 	for k, v := range pod.Annotations {
 		annotations[k] = v
 	}
-	
+
 	// Process each log line with streaming support
 	lineCount := 0
 	for scanner.Scan() {
@@ -447,7 +447,7 @@ func (t *KubernetesPodLogsTable) parseLogStreamWithFilters(stream io.ReadCloser,
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		
+
 		logRow := &PodLogRow{
 			Namespace:     pod.Namespace,
 			PodName:       pod.Name,
@@ -459,15 +459,15 @@ func (t *KubernetesPodLogsTable) parseLogStreamWithFilters(stream io.ReadCloser,
 			RestartCount:  restartCount,
 			ClusterName:   t.config.GetClusterName(),
 		}
-		
+
 		// Parse timestamp and log level with enhanced parsing
 		t.parseLogLineAdvanced(logRow, line)
-		
+
 		// Apply inline log level filtering
 		if len(filters.LogLevels) > 0 && !t.matchesLogLevelFilter(logRow.LogLevel, filters.LogLevels) {
 			continue
 		}
-		
+
 		// Apply time range filtering if timestamp was parsed
 		if logRow.Timestamp != nil {
 			if filters.SinceTime != nil && logRow.Timestamp.Before(*filters.SinceTime) {
@@ -477,20 +477,20 @@ func (t *KubernetesPodLogsTable) parseLogStreamWithFilters(stream io.ReadCloser,
 				continue
 			}
 		}
-		
+
 		logs = append(logs, logRow)
 		lineCount++
-		
+
 		// Apply limit if specified
 		if filters.Limit != nil && int64(lineCount) >= *filters.Limit {
 			break
 		}
 	}
-	
+
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("error reading log stream: %w", err)
 	}
-	
+
 	return logs, nil
 }
 
@@ -513,7 +513,7 @@ func (t *KubernetesPodLogsTable) parseLogLineAdvanced(logRow *PodLogRow, line st
 			}
 		}
 	}
-	
+
 	// Try to extract log level from the message with advanced parsing
 	logRow.LogLevel = t.extractLogLevelAdvanced(logRow.LogMessage)
 }
@@ -529,12 +529,12 @@ func (t *KubernetesPodLogsTable) extractLogLevelAdvanced(message string) string 
 	if level := t.extractLogLevelFromJSON(message); level != "" {
 		return level
 	}
-	
+
 	// Try logfmt parsing
 	if level := t.extractLogLevelFromLogfmt(message); level != "" {
 		return level
 	}
-	
+
 	// Fallback to pattern matching
 	return t.extractLogLevelFromPattern(message)
 }
@@ -546,12 +546,12 @@ func (t *KubernetesPodLogsTable) extractLogLevelFromJSON(message string) string 
 	if !strings.HasPrefix(message, "{") {
 		return ""
 	}
-	
+
 	var logEntry map[string]interface{}
 	if err := json.Unmarshal([]byte(message), &logEntry); err != nil {
 		return ""
 	}
-	
+
 	// Common JSON log level fields
 	levelFields := []string{"level", "lvl", "severity", "log_level", "loglevel"}
 	for _, field := range levelFields {
@@ -561,7 +561,7 @@ func (t *KubernetesPodLogsTable) extractLogLevelFromJSON(message string) string 
 			}
 		}
 	}
-	
+
 	return ""
 }
 
@@ -579,7 +579,7 @@ func (t *KubernetesPodLogsTable) extractLogLevelFromLogfmt(message string) strin
 // extractLogLevelFromPattern extracts log level using pattern matching
 func (t *KubernetesPodLogsTable) extractLogLevelFromPattern(message string) string {
 	message = strings.ToUpper(message)
-	
+
 	// Enhanced log level patterns with priority order
 	logLevelPatterns := []struct {
 		pattern string
@@ -593,13 +593,13 @@ func (t *KubernetesPodLogsTable) extractLogLevelFromPattern(message string) stri
 		{"DEBUG", "DEBUG"},
 		{"TRACE", "TRACE"},
 	}
-	
+
 	for _, levelPattern := range logLevelPatterns {
 		if strings.Contains(message, levelPattern.pattern) {
 			return levelPattern.level
 		}
 	}
-	
+
 	return "INFO" // Default level
 }
 
@@ -614,12 +614,12 @@ func (t *KubernetesPodLogsTable) initializeClient() error {
 	// Create default configuration
 	cfg := &config.Config{}
 	cfg.ApplyDefaults()
-	
+
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("default configuration validation failed: %w", err)
 	}
-	
+
 	// For now, return an error that guides users to use proper configuration
 	// In a production plugin, this would create a default client with the config
 	return fmt.Errorf("Kubernetes client not initialized. Please ensure plugin is configured with valid kubeconfig or cluster credentials")
@@ -630,21 +630,21 @@ func (t *KubernetesPodLogsTable) initializeClient() error {
 // applyPostCollectionFilters applies filters that couldn't be applied during collection
 func (t *KubernetesPodLogsTable) applyPostCollectionFilters(logs []*PodLogRow, filters LogQueryFilters) []*PodLogRow {
 	var filtered []*PodLogRow
-	
+
 	for _, log := range logs {
 		// Apply namespace filtering (if multiple namespaces were queried)
 		if len(filters.Namespaces) > 0 && !t.matchesNamespaceFilter(log.Namespace, filters.Namespaces) {
 			continue
 		}
-		
+
 		filtered = append(filtered, log)
 	}
-	
+
 	// Apply final limit if not applied during streaming
 	if filters.Limit != nil && int64(len(filtered)) > *filters.Limit {
 		filtered = filtered[:*filters.Limit]
 	}
-	
+
 	return filtered
 }
 
@@ -681,7 +681,7 @@ func (t *KubernetesPodLogsTable) isPermissionError(err error) bool {
 // logFiltersString creates a string representation of filters for logging
 func logFiltersString(filters LogQueryFilters) string {
 	var parts []string
-	
+
 	if len(filters.Namespaces) > 0 {
 		parts = append(parts, fmt.Sprintf("namespaces=%v", filters.Namespaces))
 	}
@@ -697,7 +697,7 @@ func logFiltersString(filters LogQueryFilters) string {
 	if filters.UntilTime != nil {
 		parts = append(parts, fmt.Sprintf("until=%s", filters.UntilTime.Format(time.RFC3339)))
 	}
-	
+
 	return strings.Join(parts, ", ")
 }
 
@@ -706,30 +706,30 @@ func logFiltersString(filters LogQueryFilters) string {
 // startLogStreaming starts real-time log streaming for a pod
 func (t *KubernetesPodLogsTable) startLogStreaming(ctx context.Context, pod *corev1.Pod, containerName string, filters LogQueryFilters) (<-chan *PodLogRow, error) {
 	logChan := make(chan *PodLogRow, 100) // Buffered channel
-	
+
 	// Configure streaming log options
 	logOpts := internal.LogOptions{
 		Follow:     true,
 		Timestamps: true,
 	}
-	
+
 	if filters.SinceTime != nil {
 		logOpts.SinceTime = &metav1.Time{Time: *filters.SinceTime}
 	}
 	if filters.TailLines != nil {
 		logOpts.TailLines = filters.TailLines
 	}
-	
+
 	go func() {
 		defer close(logChan)
-		
+
 		logStream, err := t.client.GetPodLogs(ctx, pod.Namespace, pod.Name, containerName, logOpts)
 		if err != nil {
 			slog.Error("Failed to start log streaming", "error", err)
 			return
 		}
 		defer logStream.Close()
-		
+
 		// Process streaming logs
 		scanner := bufio.NewScanner(logStream)
 		for scanner.Scan() {
@@ -741,10 +741,10 @@ func (t *KubernetesPodLogsTable) startLogStreaming(ctx context.Context, pod *cor
 				if strings.TrimSpace(line) == "" {
 					continue
 				}
-				
+
 				// Create log row (similar to parseLogStreamWithFilters)
 				logRow := t.createLogRowFromLine(line, pod, containerName)
-				
+
 				// Apply filters
 				if t.passesStreamingFilters(logRow, filters) {
 					select {
@@ -756,7 +756,7 @@ func (t *KubernetesPodLogsTable) startLogStreaming(ctx context.Context, pod *cor
 			}
 		}
 	}()
-	
+
 	return logChan, nil
 }
 
@@ -770,18 +770,18 @@ func (t *KubernetesPodLogsTable) createLogRowFromLine(line string, pod *corev1.P
 			break
 		}
 	}
-	
+
 	// Convert labels and annotations
 	labels := make(map[string]interface{})
 	for k, v := range pod.Labels {
 		labels[k] = v
 	}
-	
+
 	annotations := make(map[string]interface{})
 	for k, v := range pod.Annotations {
 		annotations[k] = v
 	}
-	
+
 	logRow := &PodLogRow{
 		Namespace:     pod.Namespace,
 		PodName:       pod.Name,
@@ -793,10 +793,10 @@ func (t *KubernetesPodLogsTable) createLogRowFromLine(line string, pod *corev1.P
 		RestartCount:  restartCount,
 		ClusterName:   t.config.GetClusterName(),
 	}
-	
+
 	// Parse timestamp and log level
 	t.parseLogLineAdvanced(logRow, line)
-	
+
 	return logRow
 }
 
@@ -806,7 +806,7 @@ func (t *KubernetesPodLogsTable) passesStreamingFilters(logRow *PodLogRow, filte
 	if len(filters.LogLevels) > 0 && !t.matchesLogLevelFilter(logRow.LogLevel, filters.LogLevels) {
 		return false
 	}
-	
+
 	// Apply time range filtering
 	if logRow.Timestamp != nil {
 		if filters.SinceTime != nil && logRow.Timestamp.Before(*filters.SinceTime) {
@@ -816,7 +816,7 @@ func (t *KubernetesPodLogsTable) passesStreamingFilters(logRow *PodLogRow, filte
 			return false
 		}
 	}
-	
+
 	return true
 }
 
@@ -827,7 +827,7 @@ func (t *KubernetesPodLogsTable) Close() error {
 		cancelFunc()
 		delete(t.streamingConnections, key)
 	}
-	
+
 	if t.client != nil {
 		return t.client.Close()
 	}

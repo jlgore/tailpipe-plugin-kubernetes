@@ -3,7 +3,7 @@ package examples
 import (
 	"fmt"
 
-	"github.com/turbot/tailpipe-plugin-kubernetes/config"
+	"github.com/jlgore/tailpipe-plugin-kubernetes/config"
 )
 
 func ConfigValidationDemo() {
@@ -14,7 +14,7 @@ func ConfigValidationDemo() {
 	fmt.Println("\n1. Default Configuration:")
 	defaultConfig := &config.Config{}
 	defaultConfig.ApplyDefaults()
-	
+
 	if err := defaultConfig.Validate(); err != nil {
 		fmt.Printf("   ❌ Validation failed: %v\n", err)
 	} else {
@@ -60,7 +60,7 @@ func ConfigValidationDemo() {
 
 	// Test 4: Invalid configurations
 	fmt.Println("\n4. Invalid Configuration Examples:")
-	
+
 	invalidConfigs := []struct {
 		name   string
 		config *config.Config
