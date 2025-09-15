@@ -32,6 +32,9 @@ jobs:
     - name: Download dependencies
       run: go mod download
 
+    - name: Verify module integrity
+      run: go mod verify
+
     - name: Run tests
       run: go test -v ./...
 
@@ -58,6 +61,9 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.24.3'
+
+    - name: Download dependencies
+      run: go mod download
 
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v6
